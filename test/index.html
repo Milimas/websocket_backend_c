@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tester</title>
+</head>
+<body>
+    <div>
+        <h1>Chat</h1>
+        <div id="chat"></div>
+        <form id="form">
+            <input id="input" autocomplete="off" /><button>Send</button>
+        </form>
+        <script>
+            const form = document.getElementById('form');
+            const input = document.getElementById('input');
+            const chat = document.getElementById('chat');
+
+            let ws = new WebSocket('ws://localhost:8080');
+
+            ws.onmessage = (event) => {
+                const message = document.createElement('div');
+                message.textContent = event.data;
+                chat.appendChild(message);
+            };
+
+            ws.addEventListener('open', () => {
+                form.addEventListener('submit', e => {
+                    e.preventDefault();
+                    if (input.value) {
+                        ws.send(input.value);
+                        const message = document.createElement('div');
+                        message.textContent = input.value;
+                        chat.appendChild(message);
+                        input.value = '';
+                    }
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>
