@@ -56,6 +56,17 @@ void Multiplex::start(void)
                 std::cout << "New client: " << infd << std::endl ;
                 clients[infd] = new Client(infd);
 
+                // find client in map that doesn't have peer and peer both
+                for (std::map<SOCKET, Client*>::iterator it = clients.begin(); it != clients.end(); it++)
+                {
+                    if (it->second != clients[infd] && it->second->peer == NULL)
+                    {
+                        it->second->peer = clients[infd];
+                        clients[infd]->peer = it->second;
+                        break;
+                    }
+                }
+
                 continue;
             }
             else if (events[i].events & EPOLLIN)   // check if we have EPOLLIN (connection socket ready to read)

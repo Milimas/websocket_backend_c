@@ -12,15 +12,19 @@ public:
     std::map<std::string, std::string> headers ;
     enum State { REQUESTLINE = 0, HEADER, CHECK, UPGRADE, UPGRADED, DONE, ERROR } state ;
     std::string requestBuffer ;
+    Client *peer;
 
     Client( SOCKET s ) : sock(s)
     {
         state = REQUESTLINE ;
         requestBuffer = "";
+        peer = NULL;
     }
     ~Client( void )
     {
         close(sock) ;
+        if (peer != NULL)
+            peer->peer = NULL;
     }
     Client( const Client& rhs )
     {
@@ -28,6 +32,7 @@ public:
         headers = rhs.headers ;
         state = rhs.state ;
         requestBuffer = rhs.requestBuffer ;
+        peer = rhs.peer;
     }
     const Client& operator=( const Client& rhs )
     {
@@ -35,6 +40,7 @@ public:
         headers = rhs.headers ;
         state = rhs.state ;
         requestBuffer = rhs.requestBuffer ;
+        peer = rhs.peer;
         return *this ;
     }
 
@@ -188,9 +194,9 @@ public:
             offset = 6;
         }
 
+        std::string decoded(msglen, 0);
         if (mask)
         {
-            std::string decoded(msglen, 0);
             std::string masks = bytes.substr(offset, 4);
             offset += 4;
             for (unsigned long i = 0; i < msglen; i++)
@@ -198,20 +204,19 @@ public:
                 decoded[i] = bytes[offset + i] ^ masks[i % 4];
             }
             std::cout << "Decoded: " << decoded << std::endl;
-            requestBuffer = "" ;
-            return decoded;
+            requestBuffer.erase(0, offset + msglen);
         }
         else
         {
-            std::string decoded(msglen, 0);
             for (unsigned long i = 0; i < msglen; i++)
             {
                 decoded[i] = bytes[offset + i];
             }
-            requestBuffer = "" ;
-            return decoded;
+            requestBuffer.erase(0, offset + msglen);
         }
         state = UPGRADED ;
+        encodeWebsocketDataFrame(decoded) ;
+        return decoded ;
     }
 
     void encodeWebsocketDataFrame( std::string data )
@@ -230,9 +235,16 @@ public:
 
         encoded += data;
 
-        int bytesSent = send(sock, encoded.c_str(), encoded.size(), 0);
-        if (bytesSent < 0)
-            throw std::runtime_error("Error sending to socket") ;
+        if (peer != NULL)
+        {
+            int bytesSent = send(peer->sock, encoded.c_str(), encoded.size(), 0);
+            if (bytesSent < 0)
+                throw std::runtime_error("Error sending to socket") ;
+        }
+        else
+        {
+            throw std::runtime_error("Peer not set") ;
+        }
     }
 
     void parseRequest( void )
@@ -257,7 +269,6 @@ public:
                 break ;
             case UPGRADED:
                 decodeWebsocketDataFrame(requestBuffer) ;
-                encodeWebsocketDataFrame("Hello World!") ;
                 break ;
             default:
                 break ;

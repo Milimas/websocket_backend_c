@@ -10,7 +10,9 @@
         <h1>Chat</h1>
         <div id="chat"></div>
         <form id="form">
-            <input id="input" autocomplete="off" /><button>Send</button>
+            <textarea id="input" autocomplete="off" /></textarea>
+            <br>
+            <button>Send</button>
         </form>
         <script>
             const form = document.getElementById('form');
@@ -21,7 +23,7 @@
 
             ws.onmessage = (event) => {
                 const message = document.createElement('div');
-                message.textContent = event.data;
+                message.textContent = "Stranger: " + event.data;
                 chat.appendChild(message);
             };
 
@@ -31,7 +33,7 @@
                     if (input.value) {
                         ws.send(input.value);
                         const message = document.createElement('div');
-                        message.textContent = input.value;
+                        message.textContent = "You: " + input.value;
                         chat.appendChild(message);
                         input.value = '';
                     }
